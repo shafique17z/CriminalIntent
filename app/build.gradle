@@ -1,6 +1,10 @@
 plugins {
     id 'com.android.application'
     id 'kotlin-android'
+
+    //For Room uses ..
+    id 'kotlin-kapt' /** kotlin-kapt plug-in makes library-generated files visible to Android Studio so we can import
+                     * them in our own classes to use.*/
 }
 
 android {
@@ -44,6 +48,13 @@ dependencies {
 
     //Dependency for RecyclerView
     implementation 'androidx.recyclerview:recyclerview:1.0.0'
+
+    //FOR ROOM USES ..
+    //room-runtime dependency, is for the Room API containing all the classes and annotations to define your database.
+    implementation 'androidx.room:room-runtime:2.1.0-alpha04'
+
+    //Room compiler, generates your database implementation based on the annotations we specify.
+    kapt 'androidx.room:room-compiler:2.1.0-alpha04'
 
     testImplementation 'junit:junit:4.+'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
