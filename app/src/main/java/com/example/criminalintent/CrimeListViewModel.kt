@@ -19,7 +19,7 @@ class CrimeListViewModel : ViewModel() {
 //    } This dummy data is no longer needed because now we're going to upload the data from databse.
 
     private val crimeRepository = CrimeRepository.get()
-    val crimes = crimeRepository.getCrimes()
+    val crimeListLiveData = crimeRepository.getCrimes()
 
 
 
