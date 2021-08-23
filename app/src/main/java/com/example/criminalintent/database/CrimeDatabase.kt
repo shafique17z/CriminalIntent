@@ -14,7 +14,7 @@ import com.example.criminalintent.Crime
  * @CrimeDatabse class is marked abstract because we can't make an instance of it directly.
  * */
 
-@Database(entities = [Crime::class], version = 1)
+@Database(entities = [Crime::class], version = 1, exportSchema = false)
 
 @TypeConverters(CrimeTypeConverters::class)
 //Telling database to use the functions in that class when converting your types.

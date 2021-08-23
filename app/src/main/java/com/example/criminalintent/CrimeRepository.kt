@@ -6,6 +6,7 @@ import androidx.room.Database
 import androidx.room.Room
 import com.example.criminalintent.database.CrimeDatabase
 import java.util.*
+import java.util.concurrent.Executors
 
 /**Why did we create a singleton? Because to access the data from a source or set of sources.
  *
@@ -35,8 +36,32 @@ class CrimeRepository private constructor(context: Context) {
     //Creating @crimeDao property to store reference to @DAO objects.
     private val crimeDao = database.crimeDao()
 
+    /** ABOUT EXECUTORS.. they're also defined in on [CrimeDao] very vividly..
+     * An Executor is an object that references a thread. An executor instance has a function called
+     * execute that accepts a block of code to run.
+     * The code you provide in the block will run on whatever thread the executor points to.
+     *
+     * Executors are not implemented in the DAO classes but instead in a Repository ..
+     */
+
+    //Holding a reference to Executors which always does the work in new thread(always bg thread).
+    private val executor = Executors.newSingleThreadExecutor()
+    //The newSingleThreadExecutor() function returns an executor instance that points to a new thread.
+
     fun getCrimes(): LiveData<List<Crime>> = crimeDao.getCrimes()
     fun getCrime(id: UUID): LiveData<Crime?> = crimeDao.getCrime(id)
+
+    //
+    fun updateCrime(crime: Crime) {
+        executor.execute /*execute func pushes these operations to new thread so the UI isn't blocked .. */ {
+            crimeDao.updateCrime(crime)
+        }
+    }
+    fun addCrime(crime: Crime) {
+        executor.execute /*execute func pushes these operations to new thread so the UI isn't blocked .. */ {
+            crimeDao.addCrime(crime)
+        }
+    }
 
     companion object {
         private var INSTANCE: CrimeRepository? = null

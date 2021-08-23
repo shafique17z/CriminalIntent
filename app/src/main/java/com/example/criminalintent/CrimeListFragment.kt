@@ -1,11 +1,10 @@
 package com.example.criminalintent
 
+import android.content.Context
 import android.os.Bundle
 import android.text.format.DateFormat
 import android.util.Log
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
@@ -14,20 +13,41 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import java.util.*
 
 private const val TAG = "CrimeListFragment"
 
 //CrimeListFragment will display the list of crimes on the screen.
 class CrimeListFragment : Fragment() {
 
+    /**
+     * Required interface for hosting activities to get the functionality of fragments.
+     */
+    interface Callbacks {
+        fun onCrimeSelected(crimeId: UUID)
+    }
+
+    //A callbacks property to hold an object that implements Callbacks.
+    private var callbacks: Callbacks? = null
+
     private lateinit var crimeRecyclerView: RecyclerView
     private var adapter: CrimeAdapter? = CrimeAdapter(emptyList())
-
 
     //Associating @CrimeListFragment with @CrimeListViewModel.
     private val crimeListViewModel: CrimeListViewModel by lazy /* by lazy: makes the crimeListViewModel val instead of var */ {
         ViewModelProvider(this).get(CrimeListViewModel::class.java)
     }
+
+    /**The Fragment.onAttach(Context) lifecycle function is called
+     * when a fragment is attached to an activity.
+     */
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+
+        //Here we're storing context argument in callback property ..
+        callbacks = context as Callbacks?
+    }
+
 
     //A RecyclerView never creates Views by themselves. It always creates ViewHolders, which bring their
     //itemViews(lists) along for the ride
@@ -59,8 +79,7 @@ class CrimeListFragment : Fragment() {
         }
 
         override fun onClick(v: View) {
-            Toast.makeText(context, "${crime.title} pressed!", Toast.LENGTH_SHORT)
-                .show()
+            callbacks?.onCrimeSelected(crime.id)
         }
     }
 
@@ -90,6 +109,34 @@ class CrimeListFragment : Fragment() {
             return crimes.size
         }
 
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        super.onCreateOptionsMenu(menu, inflater)
+        inflater.inflate(R.menu.fragment_crime_list, menu)
+    }
+
+
+    /**Implementing onOptionsItemSelected(MenuItem) to respond to MenuItem selection by creating a new Crime,
+     * saving it to the database, and then notifying the parent activity that the new crime has been selected.
+     */
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.new_crime_menu -> {
+                val crime = Crime()
+                crimeListViewModel.addCrime(crime)
+                callbacks?.onCrimeSelected(crime.id)
+                true
+            }
+            else -> return super.onOptionsItemSelected(item)
+        }
+    }
+
+    //I defined this method to let the FragmentManager know to receive a Callback
+    // to onCreateOptionsMenu() or menu callbacks
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setHasOptionsMenu(true)
     }
 
     //Using newInstance(…) function so activities can call to get an instance of your fragment.
@@ -128,6 +175,13 @@ class CrimeListFragment : Fragment() {
                 }
             })
     }
+
+    ////New thing not commented yet till end of onDetach block..
+    override fun onDetach() {
+        super.onDetach()
+        callbacks = null
+    }
+
 
     //Now that you have an Adapter, connect it to your RecyclerView.
     private fun updateUI(crimes: List<Crime>) {

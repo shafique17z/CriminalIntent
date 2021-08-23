@@ -2,11 +2,15 @@ package com.example.criminalintent
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
+import java.util.*
 
 //MainActivity was first hosting the CrimeFragment for adding details of Crime.
 //Now, MainActivity will host CrimeListFragment to display lists of Crimes ..
 
-class MainActivity : AppCompatActivity() {
+private const val TAG = "MainActivity"
+
+class MainActivity : AppCompatActivity(), CrimeListFragment.Callbacks {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -38,14 +42,24 @@ class MainActivity : AppCompatActivity() {
 
                 .beginTransaction() /* This function creates and returns an instance of FragmentTransaction. */
 
-                .add(R.id.fragment_container, fragment) /** The add() function has two parameters, one for container where the fragment will be held
-                                                         * and the fragment that will be sent to container to be held.
-                                                         * A container view id serves 2 purposes.
-                                                         * 1- Activity ke view heirarchy main fragment ka view kahan appear ho, tells the FragmentManager.
-                                                         * 2- Aur agar Fragments ki list bann jaye tou each fragment ko uniquely identify karte hain
-                                                         * iss id ka use karke.
-                                                         */
+                .add(R.id.fragment_container, fragment)
+                /** The add() function has two parameters, one for container where the fragment will be held
+                 * and the fragment that will be sent to container to be held.
+                 * A container view id serves 2 purposes.
+                 * 1- Activity ke view heirarchy main fragment ka view kahan appear ho, tells the FragmentManager.
+                 * 2- Aur agar Fragments ki list bann jaye tou each fragment ko uniquely identify karte hain
+                 * iss id ka use karke.
+                 */
                 .commit()
         }
+    }
+
+    //New thing not commented yet till end of this block..
+    override fun onCrimeSelected(crimeId: UUID) {
+        val fragment = CrimeFragment.newInstance(crimeId)
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.fragment_container, fragment)
+            .addToBackStack(null)
+            .commit()
     }
 }
