@@ -5,6 +5,7 @@ import androidx.lifecycle.LiveData
 import androidx.room.Database
 import androidx.room.Room
 import com.example.criminalintent.database.CrimeDatabase
+import com.example.criminalintent.database.migration_1_2
 import java.util.*
 import java.util.concurrent.Executors
 
@@ -30,8 +31,13 @@ class CrimeRepository private constructor(context: Context) {
     private val database: CrimeDatabase = Room.databaseBuilder(
         context.applicationContext,
         CrimeDatabase::class.java,
-        DATABASE_NAME
-        ).build()
+        DATABASE_NAME)
+        .addMigrations(migration_1_2)
+        .build()
+
+    /** After you create your Migration, you need to provide it to your database when it is created so Room can know
+     * about Migrations */
+
 
     //Creating @crimeDao property to store reference to @DAO objects.
     private val crimeDao = database.crimeDao()
@@ -57,6 +63,7 @@ class CrimeRepository private constructor(context: Context) {
             crimeDao.updateCrime(crime)
         }
     }
+
     fun addCrime(crime: Crime) {
         executor.execute /*execute func pushes these operations to new thread so the UI isn't blocked .. */ {
             crimeDao.addCrime(crime)
