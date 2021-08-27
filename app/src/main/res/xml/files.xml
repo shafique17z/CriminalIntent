@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This XML file says, “Map the root path of my private storage as crime_photos.”
+You will not use the crime_photos name – FileProvider uses that internally. -->
+
+<paths>
+    <files-path name="crime_photos" path="."/>
+</paths>

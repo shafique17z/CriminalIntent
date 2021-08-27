@@ -21,4 +21,10 @@ data class Crime(
     var suspect: String = "",
     var date: Date = Date(),
     var isSolved: Boolean = false
-)
+) {
+
+    /** A computed property to get a well-known filename.
+     */
+    val photoFileName
+        get() = "IMG_$id.jpg"
+}

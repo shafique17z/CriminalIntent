@@ -6,6 +6,7 @@ import androidx.room.Database
 import androidx.room.Room
 import com.example.criminalintent.database.CrimeDatabase
 import com.example.criminalintent.database.migration_1_2
+import java.io.File
 import java.util.*
 import java.util.concurrent.Executors
 
@@ -54,10 +55,13 @@ class CrimeRepository private constructor(context: Context) {
     private val executor = Executors.newSingleThreadExecutor()
     //The newSingleThreadExecutor() function returns an executor instance that points to a new thread.
 
+    private val filesDir = context.applicationContext.filesDir
+    //[filesDir] gets the directory of file stored on filesystem.
+
     fun getCrimes(): LiveData<List<Crime>> = crimeDao.getCrimes()
     fun getCrime(id: UUID): LiveData<Crime?> = crimeDao.getCrime(id)
 
-    //
+
     fun updateCrime(crime: Crime) {
         executor.execute /*execute func pushes these operations to new thread so the UI isn't blocked .. */ {
             crimeDao.updateCrime(crime)
@@ -69,6 +73,9 @@ class CrimeRepository private constructor(context: Context) {
             crimeDao.addCrime(crime)
         }
     }
+
+    /** A getPhotoFile(Crime) function that provides a complete local file path for Crime’s image. */
+    fun getPhotoFile(crime: Crime): File = File(filesDir, crime.photoFileName)
 
     companion object {
         private var INSTANCE: CrimeRepository? = null

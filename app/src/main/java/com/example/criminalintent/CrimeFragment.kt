@@ -7,20 +7,20 @@ import android.content.pm.ResolveInfo
 import android.net.Uri
 import android.os.Bundle
 import android.provider.ContactsContract
+import android.provider.MediaStore
 import android.text.Editable
 import android.text.TextWatcher
 import android.text.format.DateFormat
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.CheckBox
-import android.widget.EditText
-import android.widget.TextView
+import android.widget.*
+import androidx.core.content.FileProvider
 import androidx.core.view.ViewCompat.jumpDrawablesToCurrentState
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.Observer
+import java.io.File
 import java.util.*
 
 //New things not commented yet till TAG..
@@ -29,6 +29,7 @@ private const val TAG = "CrimeFragment"
 private const val DIALOG_DATE_TAG = "DatePickerFragment"
 private const val REQUEST_DATE = 0
 private const val REQUEST_CONTACT = 1
+private const val REQUEST_PHOTO = 2
 private const val DATE_FORMAT = "EEE, MMM, dd"
 
 
@@ -46,6 +47,11 @@ class CrimeFragment : Fragment(), DatePickerFragment.Callbacks {
     private lateinit var crimeSolvedCheckBox: CheckBox
     private lateinit var reportButton: Button
     private lateinit var suspectButton: Button
+    private lateinit var photoButton: ImageButton
+    private lateinit var photoView: ImageView
+    private lateinit var photoFile: File
+    private lateinit var photoUri: Uri
+    private var pictureUtils: PictureUtils = PictureUtils()
 
     private val crimeDetailViewModel: CrimeDetailViewModel by lazy {
         ViewModelProvider(this).get(CrimeDetailViewModel::class.java)
@@ -78,6 +84,8 @@ class CrimeFragment : Fragment(), DatePickerFragment.Callbacks {
         crimeSolvedCheckBox = view.findViewById(R.id.crime_solved_checkbox) //as CheckBox
         reportButton = view.findViewById(R.id.crime_report_button) //as Button
         suspectButton = view.findViewById(R.id.choose_suspect_button)
+        photoButton = view.findViewById(R.id.crime_camera) as ImageButton
+        photoView = view.findViewById(R.id.crime_photo) as ImageView
 
         return view
     }
@@ -89,6 +97,14 @@ class CrimeFragment : Fragment(), DatePickerFragment.Callbacks {
             Observer { crime ->
                 crime?.let {
                     this.crime = crime
+                    /** Grabbing the photo file location down below */
+                    photoFile = crimeDetailViewModel.getPhotoFile(crime)
+                    photoUri = FileProvider.getUriForFile(
+                        requireActivity(),
+                        "com.example.criminalintent.fileprovider",
+                        photoFile
+                    )
+                    /** FileProvider.getUriForFile(…) translates local file path into a Uri the camera app can see. */
                     updateUI()
                 }
             })
@@ -159,20 +175,52 @@ class CrimeFragment : Fragment(), DatePickerFragment.Callbacks {
             //Guarding against if there's no contact app to some particular user ..
 
             /**If this search is successful, it will return an instance of ResolveInfo telling you all about which
-            * activity it found. On the other hand, if the search returns null, the game is up – no contacts app. So
-            * you disable the useless CHOOSE SUSPECT button. */
+             * activity it found. On the other hand, if the search returns null, the game is up – no contacts app. So
+             * you disable the useless CHOOSE SUSPECT button. */
             //pickContactIntent.addCategory(Intent.CATEGORY_HOME)
             //This category (above commented line) does nothing, but it will prevent any contacts applications from matching your intent.
             val packageManager: PackageManager = requireActivity().packageManager
+
             /** Calling resolveActivity(Intent, Int) to find an activity that matches the Intent we gave it.
              * The MATCH_DEFAULT_ONLY flag restricts this search to activities with the CATEGORY_DEFAULT flag. */
             val resolvedActivity: ResolveInfo? =
-                packageManager.resolveActivity(pickContactIntent,
-                    PackageManager.MATCH_DEFAULT_ONLY)
+                packageManager.resolveActivity(
+                    pickContactIntent,
+                    PackageManager.MATCH_DEFAULT_ONLY
+                )
+            if (resolvedActivity == null) {
+                isEnabled = false
+            }
+        }
+
+        /** An implicit intent to ask for a new picture to be taken into the location saved in photoUri */
+        photoButton.apply {
+            val packageManager: PackageManager = requireActivity().packageManager
+
+            val captureImage = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+            val resolvedActivity: ResolveInfo? =
+                packageManager.resolveActivity(captureImage, PackageManager.MATCH_DEFAULT_ONLY)
             if (resolvedActivity == null) {
                 isEnabled = false
             }
 
+            setOnClickListener {
+                captureImage.putExtra(MediaStore.EXTRA_OUTPUT, photoUri)
+                val cameraActivities: List<ResolveInfo> =
+                    packageManager.queryIntentActivities(
+                        captureImage,
+                        PackageManager.MATCH_DEFAULT_ONLY
+                    )
+
+                for (cameraActivity in cameraActivities) {
+                    requireActivity().grantUriPermission(
+                        cameraActivity.activityInfo.packageName,
+                        photoUri,
+                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    )
+                }
+                startActivityForResult(captureImage, REQUEST_PHOTO)
+            }
         }
 
 
@@ -191,6 +239,14 @@ class CrimeFragment : Fragment(), DatePickerFragment.Callbacks {
         crimeDetailViewModel.saveCrime(crime)
     }
 
+    override fun onDetach() {
+        super.onDetach()
+        requireActivity().revokeUriPermission(
+            photoUri,
+            Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        )
+    }
+
     private fun updateUI() {
         titleField.setText(crime.title)
         dateButton.text = crime.date.toString()
@@ -201,8 +257,18 @@ class CrimeFragment : Fragment(), DatePickerFragment.Callbacks {
         if (crime.suspect.isNotEmpty()) {
             suspectButton.text = crime.suspect
         }
+        updatePhotoView()
     }
 
+    //Loading the Bitmap into your ImageView, add a function to CrimeFragment to update photoView.
+    private fun updatePhotoView() {
+        if (photoFile.exists()) {
+            val bitmap = pictureUtils.getScaledBitmap(photoFile.path, requireActivity())
+            photoView.setImageBitmap(bitmap)
+        } else {
+            photoView.setImageDrawable(null)
+        }
+    }
 
     /** Because you started the activity for a result with [ACTION_PICK], you will receive an intent via
      * [onActivityResult]. This intent includes a data URI. The URI is a locator that points at the single
@@ -242,6 +308,15 @@ class CrimeFragment : Fragment(), DatePickerFragment.Callbacks {
                 }
 
             }
+
+            requestCode == REQUEST_PHOTO -> {
+                requireActivity().revokeUriPermission(
+                    photoUri,
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+                updatePhotoView()
+            }
+
         }
     }
 
